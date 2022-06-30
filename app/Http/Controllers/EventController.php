@@ -28,7 +28,9 @@ class EventController extends Controller
 
         //Adicionou os dados do Request a um novo evento
 
-        if($request->hasFile('image') && $request->file('image')->isValid()){ //Verifica o input de imagem
+        if($request->hasFile('image') && $request->file('image')->isValid()){
+            //Verifica o input de imagem
+
             $requestImage = $request->image;
 
 
@@ -46,7 +48,6 @@ class EventController extends Controller
 
         $user = auth()->user();
         $event->user_id = $user->id;
-
         //Adiciona o nome do criador do evento ao usuário logado
 
         $event->save();
@@ -62,13 +63,13 @@ class EventController extends Controller
         $currentUser = auth()->user();
 
         $users = User::all();
-        $list = confirmedLists::where('user', '=', $currentUser->id )->get();
-        $eventsPerUser = [];
+        $list = confirmedLists::where('user', '=', $currentUser->id )->get('event');
+        $userCofirmedsEventsIDs = Event::whereIn('id', $list)->get('id');
 
+        $eventPerUserIDs = [];
 
-
-        foreach($list as $arr){
-            $eventsPerUser[] = $arr->event;
+        foreach ($userCofirmedsEventsIDs as $ids){
+            $eventPerUserIDs[] = $ids->id;
         }
 
         $search = request('search');
@@ -80,10 +81,9 @@ class EventController extends Controller
           where([ ['title', 'like', '%'.$search.'%']])
           ->orWhere('description', 'like', '%'.$search.'%')
           ->get();
-            //Verifica se há eventos com o título ou com a descrição preenchida no campo de busca
+        //Verifica se há eventos com o título ou com a descrição preenchida no campo de busca
         }
         else{
-
             $events = Event::all();
             //Se não for buscado nada ele lista todos os eventos
         }
@@ -95,7 +95,7 @@ class EventController extends Controller
             'currentUser' => $currentUser,
             'users' => $users,
             'list' => $list,
-            'eventsPerUser' => $eventsPerUser,
+            'eventPerUserIDs' => $eventPerUserIDs
         ]);
 
     }
@@ -103,15 +103,13 @@ class EventController extends Controller
     public function destroy($id){
         //Função que deleta evento
 
-
-        //Recebendo o id, ele deleta o evento na tabela que tenha o id recebido na URL
-        confirmedLists::where('event', '=', (int) $id)->delete();
+        confirmedLists::where('event', '=', (int) $id)->delete();   //Recebendo o id, ele deleta o evento na tabela que tenha o id recebido na URL
 
         Event::findOrFail($id)->delete();
 
-        return redirect('/')->with('message', 'Event deleted successfully');
+        return redirect('/')->with('message', 'Event deleted successfully'); //Redireciona para a homepage com a mensagem de sucesso
 
-        //Redireciona para a homepage com a mensagem de sucesso
+
     }
 
     public function update($id, Request $request){
@@ -125,10 +123,10 @@ class EventController extends Controller
         $event->description = ($reqloginuest->description ?? $event->description);
         $event->city = ($request->city ?? $event->city);
         $event->private = $request->private;
+        $event->date = ($request->date ?? $event->date);
 
         //Substitui os dados do evento pelos do Request, se o campo não for preenchido ele mantém o mesmo
 
-        $event->date = ($request->date ?? $event->date);
 
         $event->save();
 
@@ -137,35 +135,21 @@ class EventController extends Controller
         //Salve e redireciona
 
 
-
     }
 
-    public function myEvents($id){
+    public function myEvents(){
 
         //Lista os eventos criados pelo usuário
 
         $currentUser = auth()->user();
 
-
+        //Pega os eventos que foram criados pelo usuário atual
         $events = Event::where('user_id', '=', $currentUser->id)->get();
 
-        if(count($events) == 0){
+        if(count($events) == 0){//Verifica se o usuário possui algum evento
             return redirect("/")->with('message', 'you do not have events');
         }
 
-
-        $users = User::all();
-
-        return view('myEvents', [
-            'events' => $events,
-            'users' => $users,
-            'currentUser' => $currentUser,
-        ]);
-    }
-
-    public function  editInMyEvents($user, $id){
-        $currentUser = auth()->user();
-        $events = Event::where('user_id', '=', $currentUser->id)->get();
         $users = User::all();
 
         return view('myEvents', [
@@ -176,6 +160,8 @@ class EventController extends Controller
     }
 
     public function confirm($id){
+
+        //Confirma usuário na lista de algum evento
 
         $confirmed_list = new confirmedLists;
 
@@ -194,6 +180,8 @@ class EventController extends Controller
 
     public function cancel($id){
 
+        //Confirma usuário na lista de algum evento
+
         $currentUser = auth()->user();
 
         confirmedLists::where('event', '=', $id, 'and', 'user', $currentUser->id)->delete();
@@ -206,13 +194,18 @@ class EventController extends Controller
 
     public function list($id){
 
+        //Lista as pessoas que confirmaram presença nesse evento
+
         $event = Event::findOrFail($id);
 
         $currentUser = auth()->user();
 
-        $list = confirmedLists::where('event', '=', $id)->get('user');
+        $eventIdList = confirmedLists::where('event', '=', $id)->get('user');
 
-        $users = User::whereIn('id', $list)->get();
+        //Pega os IDs dos usuários que relacionados com esse evento
+
+        $users = User::whereIn('id', $eventIdList)->get();
+        //Com esses IDs ele busca na tabela de usuários os dados do mesmo
 
         return view('list', [
             'userList' => $users,
@@ -220,36 +213,30 @@ class EventController extends Controller
             'currentUser' => $currentUser,
         ]);
 
-
     }
 
     public function myConfirmedEvents($user){
 
-        $myConfirmedEvents = confirmedLists::where('user', '=', $user)->get();
+        //Pega da lista de confirmados
 
-        $currentUser = auth()->user();
+        $userIdList = confirmedLists::where('user', '=', $user)->get('event');
 
+        //Pega os IDs dos eventos que relacionados com esse usuário
 
-        if(count($myConfirmedEvents) !== 0){
-
-            foreach ($myConfirmedEvents as $eventsIds)
-            {
-                $IDs[] = $eventsIds->event;
-            }
+        $events =  Event::whereIn('id', $userIdList)->get();
+        //Com esses IDs ele busca na tabela de eventos os dados do mesmo
 
 
-            $events =  Event::whereIn('id', $IDs)->get();
-
-
-        $users = User::all();
-
-        return view('myConfirmedsEvents', [
-            'events' => $events, 'currentUser' => $currentUser, 'users' => $users]);
-        }else{
-            return redirect('/')->with('message', 'You are not confirmed in any events');
+        if(count($events) == 0){
+            return redirect('/')->with('message', 'You are not confirmed in any events!');
         }
 
 
+        $users = User::all();$currentUser = auth()->user();
+
+        return view('myConfirmedsEvents', [
+
+            'events' => $events, 'currentUser' => $currentUser, 'users' => $users]);
     }
 
 

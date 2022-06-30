@@ -134,7 +134,9 @@
                                 <button onclick="showEditEventModal({{ $event->id }})">Edit</button>
 
                             </div>
-                        @elseif(in_array($event->id, $eventsPerUser))
+
+
+                        @elseif(in_array($event->id, $eventPerUserIDs))
                             <form action="{{ route('cancelPresence', ['id' => $event->id]) }}" method="POST">
                                 @csrf
                                 @method('PUT')
