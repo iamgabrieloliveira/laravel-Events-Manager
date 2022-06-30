@@ -57,7 +57,6 @@ class EventController extends Controller
     }
 
     public function index(){
-
         //Rota raiz que lista todos os dados da página inicial
 
         $currentUser = auth()->user();
@@ -72,22 +71,18 @@ class EventController extends Controller
             $eventPerUserIDs[] = $ids->id;
         }
 
-        $search = request('search');
-
         //Funcionalidade de busca na pagina principal
+        $search = request('search');
         if($search){
-
-          $events = Event::
-          where([ ['title', 'like', '%'.$search.'%']])
-          ->orWhere('description', 'like', '%'.$search.'%')
-          ->get();
+            $events = Event::
+            where([ ['title', 'like', '%'.$search.'%']])
+            ->orWhere('description', 'like', '%'.$search.'%')
+            ->get();
         //Verifica se há eventos com o título ou com a descrição preenchida no campo de busca
-        }
-        else{
+        }else{
             $events = Event::all();
             //Se não for buscado nada ele lista todos os eventos
         }
-
 
         return view ('welcome', [
             'events' => $events,
@@ -109,13 +104,11 @@ class EventController extends Controller
 
         return redirect('/')->with('message', 'Event deleted successfully'); //Redireciona para a homepage com a mensagem de sucesso
 
-
     }
 
     public function update($id, Request $request){
 
         //Atualiza os dados do evento resgatado pelo id delete
-
 
         $event = Event::findOrFail($id);
 
@@ -127,14 +120,9 @@ class EventController extends Controller
 
         //Substitui os dados do evento pelos do Request, se o campo não for preenchido ele mantém o mesmo
 
-
         $event->save();
 
         return redirect('/')->with('message', 'event edited successfully');
-
-        //Salve e redireciona
-
-
     }
 
     public function myEvents(){
@@ -172,9 +160,7 @@ class EventController extends Controller
 
         $confirmed_list->save();
 
-
         return redirect('/')->with('message', 'Presence confirmed');
-
 
     }
 
@@ -187,7 +173,6 @@ class EventController extends Controller
         confirmedLists::where('event', '=', $id, 'and', 'user', $currentUser->id)->delete();
 
         return redirect()->back();
-
 
     }
 
@@ -227,15 +212,15 @@ class EventController extends Controller
         //Com esses IDs ele busca na tabela de eventos os dados do mesmo
 
 
+        //Se o usuário não estiver confirmado em nenhum evento , retorna para a página inicial
         if(count($events) == 0){
             return redirect('/')->with('message', 'You are not confirmed in any events!');
         }
 
-
-        $users = User::all();$currentUser = auth()->user();
+        $users = User::all();
+        $currentUser = auth()->user();
 
         return view('myConfirmedsEvents', [
-
             'events' => $events, 'currentUser' => $currentUser, 'users' => $users]);
     }
 
